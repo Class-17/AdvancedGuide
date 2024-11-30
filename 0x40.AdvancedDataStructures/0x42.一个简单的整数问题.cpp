@@ -1,44 +1,62 @@
 #include <bits/stdc++.h>
-using namespace std;
 
-int n, m;
+using i64 = long long;
 
-vector<int> arr;
+template<class T>
+class FenwickTree {
+public: // fenwickTree for interval [0, n)
+    int n;
+    std::vector<T> data;
 
-vector<int> sum;
+public:
+    FenwickTree(int n = 0) : n(n), data(n) {}
 
-int lowbit(int x) {return x & -x;};
+    void add(int p, T x) {
+        assert(0 <= p and p < n);
+        p += 1;
+        while (p <= n) {
+            data[p - 1] += x;
+            p += p & -p;
+        }
+    }
 
-void add(int idx, int val) {
-    for (; idx <= n; idx += lowbit(idx))
-        sum[idx] += val;
-}
+    T sum(int r) {// return sum of [0, r)
+        assert(0 <= r and r <= n);
+        T s = 0;
+        while (r > 0) {
+            s += data[r - 1];
+            r -= r & -r;
+        }
+        return s;
+    }
 
-int ask(int idx) {
-    int res = 0;
-    for (; idx > 0; idx -= lowbit(idx))
-        res += sum[idx];
-    return res;
-}
+    T sum(int l, int r) {// return sum of [l, r)
+        assert(0 <= l and l <= r and r <= n);
+        return sum(r) - sum(l);
+    }
+};
 
 int main() {
-    cin.tie(nullptr)->sync_with_stdio(false);
-    cin >> n >> m;
-    arr = vector<int>(n + 1);
-    sum = vector<int>(n + 2);
+    std::cin.tie(nullptr)->sync_with_stdio(false);
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<int> a(n + 1);
     for (int i = 1; i <= n; ++i)
-        cin >> arr[i];
+        std::cin >> a[i];
+    FenwickTree<i64> fw(n + 2);
     for (int i = 0; i < m; ++i) {
-        string q; cin >> q;
-        if (q == "Q") {
-            int x; cin >> x;
-            cout << arr[x] + ask(x) << '\n';
+        std::string op;
+        std::cin >> op;
+        if (op == "1") {
+            int l, r, d;
+            std::cin >> l >> r >> d;
+            fw.add(l, +d);
+            fw.add(r + 1, -d);
         }
         else {
-            int l, r, d;
-            cin >> l >> r >> d;
-            add(l, d);
-            add(r + 1, -d);
+            int x;
+            std::cin >> x;
+            std::cout << a[x] + fw.sum(x + 1) << '\n';
         }
     }
     return 0;

@@ -1,66 +1,61 @@
 #include <bits/stdc++.h>
-using namespace std;
 
-using ll = long long;
+using i64 = long long;
 
-int n;
-
-vector<int> arr;
-
-int lowbit(int x) {return x & -x;}
-
-void add(vector<int> &sum, int idx, int val) {
-    for (; idx <= n; idx += lowbit(idx))
-        sum[idx] += val;
-}
-
-int ask(vector<int> &sum, int idx) {
-    int res = 0;
-    for (; idx > 0; idx -= lowbit(idx))
-        res += sum[idx];
-    return res;
-}
-
-ll countA() {
-    vector<int> left(n), right(n);
-    vector<int> a(n + 1), b(n + 1);
-    for (int i = 0; i < n; ++i) {
-        left[i] = ask(a, n) - ask(a, arr[i]);
-        add(a, arr[i], 1);
+template<class T>
+class FenwickTree {
+private: // fenwickTree for interval [0, n)
+    int n;
+    std::vector<T> data;
+public:
+    FenwickTree(int n = 0) : n(n), data(n) {}
+    
+    void add(int p, T x) {
+        assert(0 <= p and p < n);
+        p += 1;
+        while (p <= n) {
+            data[p - 1] += x;
+            p += p & -p;
+        }
     }
-    for (int i = n - 1; i >= 0; --i) {
-        right[i] = ask(b, n) - ask(b, arr[i]);
-        add(b, arr[i], 1);
-    }
-    ll cnt = 0;
-    for (int i = 0; i < n; ++i)
-        cnt += 1LL * left[i] * right[i];
-    return cnt;
-}
 
-ll countB() {
-    vector<int> left(n), right(n);
-    vector<int> a(n + 1), b(n + 1);
-    for (int i = 0; i < n; ++i) {
-        left[i] = ask(a, arr[i] - 1);
-        add(a, arr[i], 1);
+    T sum(int r) {// return sum of [0, r)
+        assert(0 <= r and r <= n);
+        T s = 0;
+        while (r > 0) {
+            s += data[r - 1];
+            r -= r & -r;
+        }
+        return s;
     }
-    for (int i = n - 1; i >= 0; --i) {
-        right[i] = ask(b, arr[i] - 1);
-        add(b, arr[i], 1);
-    }
-    ll cnt = 0;
-    for (int i = 0; i < n; ++i)
-        cnt += 1LL * left[i] * right[i];
-    return cnt;
-}
 
+    T sum(int l, int r) {// return sum of [l, r)
+        assert(0 <= l and l <= r and r <= n);
+        return sum(r) - sum(l);
+    }
+};
 
 int main() {
-    cin.tie(nullptr)->sync_with_stdio(false);
-    cin >> n;
-    arr = vector<int>(n);
-    for (auto &x : arr) cin >> x;
-    cout << countA() << ' ' << countB() << '\n';
+    std::cin.tie(nullptr)->sync_with_stdio(false);
+    int n; std::cin >> n;
+    std::vector<int> a(n);
+    for (auto &x : a) std::cin >> x;
+    FenwickTree<int> fw(n + 1);
+    std::vector<i64> lcnt(n), rcnt(n);
+    for (int i = 0; i < n; ++i) {
+        lcnt[i] = fw.sum(a[i]);
+        fw.add(a[i], 1);
+    }
+    fw = FenwickTree<int>(n + 1);
+    for (int i = n - 1; i >= 0; --i) {
+        rcnt[i] = fw.sum(a[i]);
+        fw.add(a[i], 1);
+    }
+    i64 cntA = 0, cntB = 0;
+    for (int i = 0; i < n; ++i) {
+        cntA += (i - lcnt[i]) * (n - i - 1 - rcnt[i]);
+        cntB += lcnt[i] * rcnt[i];
+    }
+    std::cout << cntA << ' ' << cntB << '\n';
     return 0;
 }

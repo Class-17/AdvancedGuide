@@ -1,91 +1,116 @@
 #include <bits/stdc++.h>
-using namespace std;
-
-using ll = long long;
-
-constexpr int maxn = 5e5 + 1;
-
-ll arr[maxn], diff[maxn];
 
 template<class T>
 class FenwickTree {
-private:
+private: // fenwickTree for interval [0, n)
     int n;
-    vector<T> sum;
-    int lowbit(int x) {return x & -x;}
+    std::vector<T> data;
+
+    T sum(int r) {// return sum of [0, r)
+        assert(0 <= r and r <= n);
+        T s = 0;
+        while (r > 0) {
+            s += data[r - 1];
+            r -= r & -r;
+        }
+        return s;
+    }
 public:
-    FenwickTree(int n) : n(n), sum(n + 1) {}
- 
-    void add(int x, T d) {
-        for (; x <= n; x += lowbit(x))
-            sum[x] += d;
+    FenwickTree(int n = 0) : n(n), data(n) {}
+    
+    void add(int p, T x) {
+        assert(0 <= p and p < n);
+        p += 1;
+        while (p <= n) {
+            data[p - 1] += x;
+            p += p & -p;
+        }
     }
 
-    T ask(int x) {
-        T res = 0;
-        for (; x; x -= lowbit(x))
-            res += sum[x];
-        return res;
+    T sum(int l, int r) {// return sum of [l, r)
+        assert(0 <= l and l <= r and r <= n);
+        return sum(r) - sum(l);
     }
 };
 
-struct SegmentTree {
-    int l, r;
-    ll val;
-} t[maxn << 2];
+template<class T, T (*op)(T, T), T (*e)()>
+class Segtree {
+private:
+    int n, size, log;
+    std::vector<T> d;
+    void update(int k) {d[k] = op(d[k * 2], d[k * 2 + 1]);}
+public:
+    Segtree() : Segtree(0) {}
+    Segtree(int n) : Segtree(std::vector<T>(n, e())) {}
+    Segtree(const std::vector<T> &v) : n(v.size()) {
+        size = 1;
+        while (size < n) size *= 2;
+        log = __builtin_ctz(size);
+        d = std::vector<T>(size * 2, e());
+        for (int i = 0; i < n; ++i) d[size + i] = v[i];
+        for (int i = size - 1; i >= 1; --i)
+            update(i);
+    }
 
-void update(int p) {
-    t[p].val = gcd(t[p << 1].val, t[p<<1|1].val);
-}
+    void set(int p, T x) {
+        assert(0 <= p and p < n);
+        p += size;
+        d[p] = x;
+        for (int i = 1; i <= log; ++i) update(p >> i);
+    }
 
-void build(int p, int l, int r) {
-    tie(t[p].l, t[p].r) = pair{l, r};
-    if (l == r) {t[p].val = diff[l]; return;}
-    int mid = l + r >> 1;
-    build(p << 1, l, mid);
-    build(p<<1|1, mid + 1, r);
-    update(p);
-}
+    T get(int p) const {
+        assert(0 <= p and p < n);
+        return d[p + size];
+    }
 
-void add(int p, int x, ll delta) {
-    if (t[p].l == t[p].r) {t[p].val += delta; return;}
-    int mid = t[p].l + t[p].r >> 1;
-    if (x <= mid) add(p << 1, x, delta);
-    else          add(p<<1|1, x, delta);
-    update(p);
-}
+    T prod(int l, int r) const { // [l, r)
+        assert(0 <= l and l <= r and r <= n);
+        T sml = e(), smr = e();
+        l += size;
+        r += size;
+        while (l < r) {
+            if (l & 1) sml = op(sml, d[l++]);
+            if (r & 1) smr = op(d[--r], smr);
+            l >>= 1;
+            r >>= 1;
+        }
+        return op(sml, smr);
+    }
 
-ll ask(int p, int l, int r) {
-    if (r < t[p].l or t[p].r < l) return 0;
-    if (l <= t[p].l and t[p].r <= r) return t[p].val;
-    return gcd(ask(p << 1, l, r), ask(p<<1|1, l, r));
-}
+    T all_prod() const {return d[1];}
+};
+
+using i64 = long long;
+
+i64 e() {return i64();}
 
 int main() {
-    cin.tie(nullptr)->sync_with_stdio(false);
+    std::cin.tie(nullptr)->sync_with_stdio(false);
     int n, m;
-    cin >> n >> m;
-    for (int i = 1; i <= n; ++i) {
-        cin >> arr[i];
-        diff[i] = arr[i] - arr[i - 1];
-    }
-    build(1, 1, n);
-    FenwickTree<ll> bit(n);
+    std::cin >> n >> m;
+    std::vector<i64> a(n);
+    for (auto &x : a) std::cin >> x;
+    FenwickTree<i64> ft(n + 1);
+    Segtree<i64, std::gcd, e> sgt(n + 1);
+    for (int i = 1; i < n; ++i)
+        sgt.set(i, a[i] - a[i - 1]);
     for (int i = 0; i < m; ++i) {
-        char q; cin >> q;
-        int l, r; cin >> l >> r;
-        if (q == 'C') {
-            ll d; cin >> d;
-            add(1, l, d);
-            bit.add(l, d);
-            if (r >= n) continue;
-            add(1, r + 1, -d);
-            bit.add(r + 1, -d);
+        std::string op; std::cin >> op;
+        if (op == "C") {
+            i64 l, r, d;
+            std::cin >> l >> r >> d;
+            --l, --r;
+            ft.add(l, d);
+            ft.add(r + 1, -d);
+            sgt.set(l, sgt.get(l) + d);
+            sgt.set(r + 1, sgt.get(r + 1) - d);
         }
         else {
-            ll a = arr[l] + bit.ask(l);
-            ll b = ask(1, l + 1, r);
-            cout << gcd(a, b) << '\n';
+            int l, r;
+            std::cin >> l >> r;
+            --l, --r;
+            std::cout << std::gcd(a[l] + ft.sum(0, l + 1), sgt.prod(l + 1, r + 1)) << '\n';
         }
     }
     return 0;
